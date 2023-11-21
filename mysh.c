@@ -8,41 +8,56 @@
 #define BUF_MAX 4096
 
 void run(char *program[]);
+
 int main(int argc, char *argv[]) {
+
 	char buf[BUF_MAX];
+
 	write(0, "$", 1);
+
 	while(fgets(buf, BUF_MAX, stdin) != NULL) {
-		if (buf[0] == '\n') {
-			continue;
-		}
+
 		buf[strlen(buf)-1] = '\0';
-		char *tok[BUF_MAX];
-		tok[0] = strtok(buf, " ");
-		int i = 1;
-		// i feel like we want to tokenize first wrt | then wrt " "
-		while((tok[i] = strtok(NULL, " ")) != NULL) {
-			i++;
-		}
-		tok[i] == NULL;
-		run(tok);
+
+		char *buf_copy, *cur_pipe, *saveptr1, *saveptr2;
+		buf_copy = buf;
+		int i;
+
+		for(i = 0; ; i++, buf_copy = NULL) {
+			cur_pipe = strtok_r(buf_copy, "|", &saveptr1);
+
+			if (cur_pipe == NULL) {
+				break;
+			}
+
+			char *tok[BUF_MAX];
+
+			for (int j = 0; ; j++, cur_pipe = NULL) {
+				tok[j] = strtok_r(cur_pipe, " ", &saveptr2);
 			
-		
-		write(0,"$",1);
-		
+				if(tok[j] == NULL) {
+					run(tok);
+					break;
+				}
+			}
+		}	
+
+		for (int waits = 0; waits < i; waits++) {
+			wait(0);
+		}
+
+		write(0,"$",1);	
 	}
 }
+
 void run(char *program[]) {
 	pid_t child;
-	int exit_value;
 	child = fork();
+
 	if (child == 0) {
 		execvp(program[0],program);
 		exit(42);
-	}
-	else {
-		wait(&exit_value);
-	
-	}
+	}	
 }
 
 

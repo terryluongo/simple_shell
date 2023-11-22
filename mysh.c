@@ -29,6 +29,13 @@ int main(int argc, char *argv[]) {
 			if (cur_pipe == NULL) {
 				break;
 			}
+			// idea: pipe each time
+			// run has two args, read and write 
+			// on first run, has to be rd from stdin
+			// on NULL run, has to be write to stdout
+			// each non-null cur_pipe creates new pipe 
+			// save prev outside scope 
+			// then submit the read of the prev and the write of new to run function
 
 			char *tok[BUF_MAX];
 

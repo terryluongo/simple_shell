@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
 			
 		}	
 
-		for (int waits = 0; waits <= i; waits++) {
+	/*	for (int waits = 0; waits <= i; waits++) {
 			// LOOK INTO THIS MORE 
 			wait(0);
 		}
@@ -82,7 +82,12 @@ int main(int argc, char *argv[]) {
 		for( ; fds_open_index > 0; fds_open_index--) {
 			close(fds_open[fds_open_index-1]);
 		}
-
+	*/
+		// case for two expressions
+		wait(0);
+		close(fds_open[1]);
+		wait(0);
+		close(fds_open[0]);
 		// print new prompt 
 		write(0,"$",1);	
 	}

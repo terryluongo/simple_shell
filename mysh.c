@@ -54,6 +54,9 @@ int main(int argc, char *argv[]) {
 
 			if (cur_exp == NULL) break;
 
+			// should return prev_read, modify tok in place, modify final_output_flag somehow
+			//parse_arguments(cur_exp, &saveptr2, tok, final_output_flag, prev_read, 
+
 			int input_redir_flag = 0, output_redir_flag = 0, append_flag = 0, output_fd = 1;
 
 			// inner token parsing loop
@@ -61,13 +64,12 @@ int main(int argc, char *argv[]) {
 				
 				tok[j] = strtok_r(cur_exp, " ", &saveptr2);
 				
-				// last token, done w/ parsing, have to break before strcmp
-				if (tok[j] == NULL) {
+				// done w/ parsing, run now if no pipe
+				if (tok[j] == NULL && final_output_flag) {
 					// if output redirection, no pipe so we run now
-				 	if (final_output_flag) {
-						run(tok,prev_read,output_fd);
-					}
-					
+					run(tok,prev_read,output_fd);
+				}	
+				else if (tok[j] == NULL) {
 					break;      
 				}	
 

@@ -9,6 +9,12 @@
 
 void run(char *program[], int in, int out);
 
+int run_prev_and_pipe(char *cur_exp, char **tok, int prev_read);
+
+int handle_redirect(int redirect_flag, char *filename);
+
+int detect_arrow(char *token);
+	
 int main(int argc, char *argv[]) {
 
 	char buf[BUF_MAX];
@@ -22,42 +28,21 @@ int main(int argc, char *argv[]) {
 		char *tok[BUF_MAX];
 		char *buf_copy, *cur_exp, *saveptr1, *saveptr2;
 		buf_copy = buf;
-		int i = 0, prev_read = 0, final_output_flag = 0;
+		int i = 0, prev_read = 0;
 
 		for(; ; i++, buf_copy = NULL) {
 			
-			int cur_pipe[2];
-			
 			cur_exp = strtok_r(buf_copy, "|", &saveptr1);
-			
-			// not the first call, we can call pipe if it is not null
+
+			// if not our first time, we run previous and then create pipe if necessary
 			if (buf_copy == NULL) {
-
-				// if NULL, no new pipe needed, just run previous exp.
-				if (cur_exp == NULL) {
-					if (final_output_flag) break;
-					run(tok,prev_read,1);
-				}
-
-				// not the first and not NULL, need pipe
-				else {
-					if (pipe(cur_pipe) != 0) {
-						printf("replace with perror");
-						exit(0);
-					}
-					
-					run(tok,prev_read,cur_pipe[1]);
-
-					prev_read = cur_pipe[0];	
-				}
+				prev_read = run_prev_and_pipe(cur_exp,tok,prev_read);
 			}
 
+			// stop if no more 
 			if (cur_exp == NULL) break;
 
-			// should return prev_read, modify tok in place, modify final_output_flag somehow
-			//parse_arguments(cur_exp, &saveptr2, tok, final_output_flag, prev_read, 
-
-			int input_redir_flag = 0, output_redir_flag = 0, append_flag = 0, output_fd = 1;
+			int redirect_flag = 0, fd = 0, output_fd = -1, inner_broken = 0;
 
 			// inner token parsing loop
 			for (int j = 0; ; j++, cur_exp = NULL) {
@@ -65,48 +50,29 @@ int main(int argc, char *argv[]) {
 				tok[j] = strtok_r(cur_exp, " ", &saveptr2);
 				
 				// done w/ parsing, run now if no pipe
-				if (tok[j] == NULL && final_output_flag) {
+				if (tok[j] == NULL && output_fd >= 0) {
 					// if output redirection, no pipe so we run now
-					run(tok,prev_read,output_fd);
+					run(tok, prev_read, output_fd);
+					inner_broken = 1;
+					break;
 				}	
 				else if (tok[j] == NULL) {
 					break;      
 				}	
 
-				// input redirection handling 
-				if (strcmp(tok[j],"<") == 0) {
-					input_redir_flag = 1;
-				}	
-				else if (input_redir_flag) {
-					if ((prev_read = open(tok[j], O_RDONLY)) == -1) {
-					      perror("open");
-					      exit(2);
-					}	      
-					j -= 2; // we don't want < or filename to be in args, so write over them
-					input_redir_flag = 0;
-				}
+				fd = handle_redirect(redirect_flag, tok[j]);
 
-				//output redirection handling
-				if (strcmp(tok[j],">") == 0) {
-					output_redir_flag = 1;
-				}
-				else if (strcmp(tok[j],">>") == 0) {
-					output_redir_flag = 1;
-					append_flag = 1;
-				}
-				else if (output_redir_flag) {
-					int flag = append_flag ? O_RDWR | O_CREAT | O_APPEND : O_RDWR | O_CREAT | O_TRUNC;
+				if (redirect_flag > 0) j -= 2;
 
-					if ((output_fd = open(tok[j], flag)) == -1) {
-					      perror("open");
-					      exit(2);
-					}
+				if (redirect_flag > 1)	output_fd = fd;
 
-					j -= 2;
-					output_redir_flag = 0;
-					final_output_flag = 1;	
-				}
+				else if (redirect_flag == 1) prev_read = fd;
+
+				redirect_flag = detect_arrow(tok[j]);
+			
 			}
+
+			if (inner_broken) break;
 		}	
 
 		// wait up on all processes before new prompt
@@ -120,6 +86,7 @@ int main(int argc, char *argv[]) {
 }
 
 void run(char *program[], int in, int out) {
+
 	pid_t child;
 	child = fork();
 
@@ -130,16 +97,69 @@ void run(char *program[], int in, int out) {
 		exit(42);
 	}
 	else {
-		if (out != 1) {
-			close(out);
-		}
-		if (in != 0) {
-			close(in);
-		}
+		if (out != 1) close(out);
+		if (in != 0) close(in);
 	}
 }
 
 
+int run_prev_and_pipe(char *cur_exp, char **tok, int prev_read) {
+
+	int cur_pipe[2];
+	int next_read;
+
+	if (cur_exp == NULL) {
+		run(tok,prev_read,1);
+		next_read = -1;
+	}
+
+	// not the first and not NULL, need pipe
+	else {
+		if (pipe(cur_pipe) != 0) {
+			perror("pipe");
+			exit(0);
+		}
+		
+		run(tok, prev_read, cur_pipe[1]);
+
+		next_read = cur_pipe[0];	
+	}
+	return next_read;
+
+}
 
 
 
+int detect_arrow(char *token) {
+
+	int return_flag = 0;
+
+	if (strcmp(token, "<") == 0) return_flag = 1;
+	
+	else if (strcmp(token, ">") == 0) return_flag = 2;
+	
+	else if (strcmp(token, ">>") == 0) return_flag = 3;
+	
+	return return_flag;
+}	
+
+int handle_redirect(int redirect_flag, char *filename) {
+
+	if (redirect_flag == 0) return -1;
+
+	int fd, flag;
+
+	if (redirect_flag == 1) flag = O_RDONLY;
+	
+	else if (redirect_flag == 2) flag = O_RDWR | O_CREAT | O_TRUNC;
+	
+	else if (redirect_flag == 3) flag = O_RDWR | O_CREAT | O_APPEND;
+
+	if ((fd = open(filename, flag)) == -1) {
+		perror("open");
+		exit(2);
+	}
+
+	return fd;
+
+}

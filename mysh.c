@@ -42,6 +42,8 @@ int main(int argc, char *argv[]) {
 			// stop if no more 
 			if (cur_exp == NULL) break;
 
+			if(strcmp(cur_exp, "exit\0") == 0) exit(0); 
+
 			int redirect_flag = 0, fd = 0, output_fd = -1, inner_broken = 0;
 
 			// inner token parsing loop
@@ -62,6 +64,8 @@ int main(int argc, char *argv[]) {
 
 				fd = handle_redirect(redirect_flag, tok[j]);
 
+				if (fd == -1) inner_broken = 1;
+				
 				if (redirect_flag > 0) j -= 2;
 
 				if (redirect_flag > 1)	output_fd = fd;
@@ -70,6 +74,7 @@ int main(int argc, char *argv[]) {
 
 				redirect_flag = detect_arrow(tok[j]);
 			
+						
 			}
 
 			if (inner_broken) break;
@@ -88,12 +93,16 @@ int main(int argc, char *argv[]) {
 void run(char *program[], int in, int out) {
 
 	pid_t child;
-	child = fork();
+
+	if((child = fork()) != 0) {
+		perror("fork");
+		exit(320);
+	}
 
 	if (child == 0) {
 		dup2(in, 0);
 		dup2(out, 1);
-		execvp(program[0], program);
+		if(execvp(program[0], program) == -1) printf("mysh: %s: command not found", program[0]);
 		exit(42);
 	}
 	else {
@@ -151,11 +160,18 @@ int handle_redirect(int redirect_flag, char *filename) {
 
 	if (redirect_flag == 1) flag = O_RDONLY;
 	
-	else if (redirect_flag == 2) flag = O_RDWR | O_CREAT | O_TRUNC;
+	else if (redirect_flag == 2) flag = O_WRONLY | O_CREAT | O_TRUNC;
 	
-	else if (redirect_flag == 3) flag = O_RDWR | O_CREAT | O_APPEND;
+	else if (redirect_flag == 3) flag = O_WRONLY | O_CREAT | O_APPEND;
 
-	if ((fd = open(filename, flag)) == -1) {
+	int mode = (redirect_flag > 1) ? 0755 : 0;
+
+	if (access(filename, (redirect_flag > 1) ? W_OK : F_OK) != 0) {
+		if (redirect_flag == 1) printf("mysh: %s:  No such file or directory\n", filename);
+		else printf("mysh: %s: Permission denied\n", filename);
+	}
+
+	if ((fd = open(filename, flag, mode)) == -1) {
 		perror("open");
 		exit(2);
 	}

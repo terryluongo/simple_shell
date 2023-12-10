@@ -130,7 +130,6 @@ int run_prev_and_pipe(char *cur_exp, char **tok, int prev_read) {
 			exit(0);
 		}
 		
-		run(tok,prev_read,1);
 		run(tok, prev_read, cur_pipe[1]);
 
 		next_read = cur_pipe[0];	

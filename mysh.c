@@ -24,7 +24,6 @@ int main(int argc, char *argv[]) {
 	while(fgets(buf, BUF_MAX, stdin) != NULL) {
 
 		buf[strlen(buf)-1] = '\0';
-
 		char *tok[BUF_MAX];
 		char *buf_copy, *cur_exp, *saveptr1, *saveptr2;
 		buf_copy = buf;
@@ -36,6 +35,7 @@ int main(int argc, char *argv[]) {
 
 			// if not our first time, we run previous and then create pipe if necessary
 			if (buf_copy == NULL) {
+				printf("aboujt to run\n");
 				prev_read = run_prev_and_pipe(cur_exp,tok,prev_read);
 			}
 
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
 
 			// inner token parsing loop
 			for (int j = 0; ; j++, cur_exp = NULL) {
-				
+				printf("token\n");	
 				tok[j] = strtok_r(cur_exp, " ", &saveptr2);
 				
 				// done w/ parsing, run now if no pipe
@@ -77,7 +77,9 @@ int main(int argc, char *argv[]) {
 						
 			}
 
-			if (inner_broken) break;
+			if (inner_broken) {
+				break;
+			}	
 		}	
 
 		// wait up on all processes before new prompt
@@ -93,7 +95,7 @@ int main(int argc, char *argv[]) {
 void run(char *program[], int in, int out) {
 
 	pid_t child;
-
+	printf("hi\n");
 	if((child = fork()) != 0) {
 		perror("fork");
 		exit(320);
@@ -102,7 +104,8 @@ void run(char *program[], int in, int out) {
 	if (child == 0) {
 		dup2(in, 0);
 		dup2(out, 1);
-		if(execvp(program[0], program) == -1) printf("mysh: %s: command not found", program[0]);
+		execvp(program[0],program);
+		//if(execvp(program[0], program) == -1) printf("mysh: %s: command not found", program[0]);
 		exit(42);
 	}
 	else {
@@ -118,6 +121,7 @@ int run_prev_and_pipe(char *cur_exp, char **tok, int prev_read) {
 	int next_read;
 
 	if (cur_exp == NULL) {
+		printf("about to run\n");
 		run(tok,prev_read,1);
 		next_read = -1;
 	}
@@ -129,6 +133,8 @@ int run_prev_and_pipe(char *cur_exp, char **tok, int prev_read) {
 			exit(0);
 		}
 		
+		printf("about to run\n");
+		run(tok,prev_read,1);
 		run(tok, prev_read, cur_pipe[1]);
 
 		next_read = cur_pipe[0];	

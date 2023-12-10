@@ -35,7 +35,6 @@ int main(int argc, char *argv[]) {
 
 			// if not our first time, we run previous and then create pipe if necessary
 			if (buf_copy == NULL) {
-				printf("aboujt to run\n");
 				prev_read = run_prev_and_pipe(cur_exp,tok,prev_read);
 			}
 
@@ -48,7 +47,7 @@ int main(int argc, char *argv[]) {
 
 			// inner token parsing loop
 			for (int j = 0; ; j++, cur_exp = NULL) {
-				printf("token\n");	
+
 				tok[j] = strtok_r(cur_exp, " ", &saveptr2);
 				
 				// done w/ parsing, run now if no pipe
@@ -95,8 +94,8 @@ int main(int argc, char *argv[]) {
 void run(char *program[], int in, int out) {
 
 	pid_t child;
-	printf("hi\n");
-	if((child = fork()) != 0) {
+
+	if((child = fork()) == -1) {
 		perror("fork");
 		exit(320);
 	}
@@ -104,8 +103,7 @@ void run(char *program[], int in, int out) {
 	if (child == 0) {
 		dup2(in, 0);
 		dup2(out, 1);
-		execvp(program[0],program);
-		//if(execvp(program[0], program) == -1) printf("mysh: %s: command not found", program[0]);
+		if(execvp(program[0], program) == -1) printf("mysh: %s: command not found", program[0]);
 		exit(42);
 	}
 	else {
@@ -121,7 +119,6 @@ int run_prev_and_pipe(char *cur_exp, char **tok, int prev_read) {
 	int next_read;
 
 	if (cur_exp == NULL) {
-		printf("about to run\n");
 		run(tok,prev_read,1);
 		next_read = -1;
 	}
@@ -133,7 +130,6 @@ int run_prev_and_pipe(char *cur_exp, char **tok, int prev_read) {
 			exit(0);
 		}
 		
-		printf("about to run\n");
 		run(tok,prev_read,1);
 		run(tok, prev_read, cur_pipe[1]);
 
@@ -160,7 +156,7 @@ int detect_arrow(char *token) {
 
 int handle_redirect(int redirect_flag, char *filename) {
 
-	if (redirect_flag == 0) return -1;
+	if (redirect_flag == 0) return -2;
 
 	int fd, flag;
 

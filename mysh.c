@@ -10,6 +10,7 @@
 #define READ_REDIRECT 1
 #define WRITE_TRUNC_REDIRECT 2
 #define WRITE_APPEND_REDIRECT 3
+#define BAD_FILE_REDIRECTION -1
 
 void run(char *program[], int in, int out);
 int run_prev_and_pipe(char *cur_exp, char **tok, int prev_read);
@@ -70,8 +71,9 @@ int main(int argc, char *argv[]) {
 
 				redirect_flag = detect_arrow(tok[j]);
 			}
-			if (inner_broken) break;	
+			if (inner_broken) break;
 		}	
+
 
 		// wait up on all processes before new prompt
 		for (int waits = 0; waits <= i; waits++) {
@@ -153,10 +155,14 @@ int handle_redirect(int redirect_flag, char *filename) {
 	int mode = (redirect_flag > 1) ? 0755 : 0;
 
 	if (access(filename, F_OK) != 0) {
-		if (redirect_flag == 1) perror("access");
+		if (redirect_flag == 1) {
+			perror("access");
+			return BAD_FILE_REDIRECTION;
+		}
 	}
-	else if ((redirect_flag > 1) && (access(filename, W_OK) != 0)) {
+	else if (access(filename, (redirect_flag > 1) ? W_OK : R_OK) != 0) {
 		perror("access");
+		return BAD_FILE_REDIRECTION;
 	}
 
 	if ((fd = open(filename, flag, mode)) == -1) {

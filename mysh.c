@@ -146,17 +146,19 @@ int handle_redirect(int redirect_flag, char *filename) {
 	if (redirect_flag == NO_REDIRECT) return -2;
 
 	int fd, flag;
-	if (redirect_flag == 1) flag = READ_REDIRECT;
+	if (redirect_flag == READ_REDIRECT) flag = O_RDONLY;
 	else if (redirect_flag == WRITE_TRUNC_REDIRECT) flag = O_WRONLY | O_CREAT | O_TRUNC;
 	else if (redirect_flag == WRITE_APPEND_REDIRECT) flag = O_WRONLY | O_CREAT | O_APPEND;
-
+	
 	int mode = (redirect_flag > 1) ? 0755 : 0;
 
-	if (access(filename, (redirect_flag > 1) ? W_OK : F_OK) != 0) {
-		//if (redirect_flag == 1) printf("mysh: %s:  No such file or directory\n", filename);
-		//else printf("mysh: %s: Permission denied\n", filename);
+	if (access(filename, F_OK) != 0) {
+		if (redirect_flag == 1) perror("access");
+	}
+	else if ((redirect_flag > 1) && (access(filename, W_OK) != 0)) {
 		perror("access");
 	}
+
 	if ((fd = open(filename, flag, mode)) == -1) {
 		perror("open");
 		exit(2);

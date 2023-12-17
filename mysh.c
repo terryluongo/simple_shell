@@ -27,13 +27,13 @@ int main(int argc, char *argv[]) {
 
 		buf[strlen(buf)-1] = '\0';
 		char *tok[BUF_MAX];
-		char *buf_copy, *cur_exp, *saveptr1, *saveptr2;
+		char *buf_copy, *cur_exp, *pipe_parser, *token_parser;
 		buf_copy = buf;
 		int i = 0, prev_read = 0;
 
 		for(; ; i++, buf_copy = NULL) {
 			
-			cur_exp = strtok_r(buf_copy, "|", &saveptr1);
+			cur_exp = strtok_r(buf_copy, "|", &pipe_parser);
 
 			// if not our first time, we run previous and then create pipe if necessary
 			if (buf_copy == NULL) {
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 			// inner token parsing loop
 			for (int j = 0; ; j++, cur_exp = NULL) {
 
-				tok[j] = strtok_r(cur_exp, " ", &saveptr2);
+				tok[j] = strtok_r(cur_exp, " ", &token_parser);
 				
 				// done w/ parsing, run now if no pipe
 				if (tok[j] == NULL && output_fd >= 0) {
@@ -154,7 +154,7 @@ int handle_redirect(int redirect_flag, char *filename) {
 	
 	int mode = (redirect_flag > 1) ? 0755 : 0;
 
-	if (access(filename, F_OK) != 0) {
+	/* if (access(filename, F_OK) != 0) {
 		if (redirect_flag == 1) {
 			perror("access");
 			return BAD_FILE_REDIRECTION;
@@ -163,11 +163,11 @@ int handle_redirect(int redirect_flag, char *filename) {
 	else if (access(filename, (redirect_flag > 1) ? W_OK : R_OK) != 0) {
 		perror("access");
 		return BAD_FILE_REDIRECTION;
-	}
+	} */
 
 	if ((fd = open(filename, flag, mode)) == -1) {
 		perror("open");
-		exit(2);
+		return BAD_FILE_REDIRECTION;
 	}
 
 	return fd;
